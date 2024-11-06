@@ -1,5 +1,5 @@
-import os
 import datetime
+import os
 
 import environs
 import flask
@@ -7,8 +7,8 @@ import pirateweather
 import requests
 from flask import Response
 from flask_apscheduler import APScheduler
-from openai import OpenAI
 from icalevents.icalevents import events
+from openai import OpenAI
 
 env = environs.Env()
 environs.Env.read_env()
@@ -26,6 +26,9 @@ GITHUB_TOKEN = env("GITHUB_TOKEN")
 PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
 HA_TOKEN = env("HA_TOKEN")
 PERSONALITY = env("PERSONALITY")
+ICAL_URL = env("ICAL_URL")
+HOUR = env("HOUR")
+MINUTE = env("MINUTE")
 
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
@@ -51,15 +54,9 @@ def get_ha_data():
 
 def fetch_calendar():
     today = datetime.date.today()
-    es = events(
-        "webcal://p42-caldav.icloud.com/published/2/OTk1Mjc5MTc5OTUyNzkxN020HrKJqPbJgUFjID5nVcpDsIUo2WGhqwSveKbcQagu",
-        fix_apple=True,
-        start=today,
-        end=today,
-        sort=True
-    )
-    return [e.summary for e in es]
-
+    # The `start`, and `end` arguments of events() do not work as expected, so we filter the results manually
+    es = events(ICAL_URL, fix_apple=True, sort=True)
+    return [e.summary for e in es if e.start.date() == today]
 
 
 def build_prompt(main_floor, zone_home):
@@ -80,17 +77,19 @@ def build_prompt(main_floor, zone_home):
         "Low Temperature": f"{round(today.d['apparentTemperatureLow'])}°F",
     }
 
-    return f"""Write a good morning message to Christa without using emojis or signing the message, given the following weather conditions for today:
+    prompt = f"""Write a good morning message to Christa without using emojis or signing the message, given the following weather conditions for today:
                           Temperature inside the house: {forcast_prompt['Inside Temperature']}
                           Current Conditions: {forcast_prompt['Current Conditions']}
                           Current Temp: {forcast_prompt['Current Temperature']}
                           Conditions for the day: {forcast_prompt['Conditions for Day']}
                           High:  {forcast_prompt['High Temperature']}
                           Low: {forcast_prompt['Low Temperature']}
-               And the following items on her calendar: {','.join(fetch_calendar())}"""
+               And the following items on her calendar for today: {','.join(fetch_calendar())}"""
+    app.logger.info(prompt)
+    return prompt
 
 
-def wakeup():
+def build_response():
     prompt = build_prompt(*get_ha_data())
 
     response = client.chat.completions.create(
@@ -114,22 +113,28 @@ def wakeup():
 
 
 @scheduler.task(
-    "cron", id="write_message", week="*", day_of_week="*", hour="7", minute="30"
+    "cron", id="write_message", week="*", day_of_week="*", hour=HOUR, minute=MINUTE
 )
-@app.route("/writemessage")
-def write_message():
-    message = wakeup()
+def _write_message():
+    message = build_response()
 
     with open(f"{dir_path}/message.txt", "w") as f:
         f.write(message)
 
+    return message
+
+
+@app.route("/write_message")
+def write_message():
+    message = _write_message()
+
     return Response(message, mimetype="text/plain")
+
 
 @app.route("/")
 def get_message():
     with open(f"{dir_path}/message.txt", "r") as f:
         return Response(f.read(), mimetype="text/plain")
-
 
 
 if __name__ == "__main__":
