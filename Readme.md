@@ -1,8 +1,8 @@
 
 ## Shortcut
 
-![The shortcut](https://github.com/stickystyle/aiexperiments/blob/master/img/IMG_3872.PNG)
+![The shortcut](https://github.com/stickystyle/aiexperiments/blob/main/img/IMG_3872.PNG)
 
 ## Automation
 
-![The automation](https://github.com/stickystyle/aiexperiments/blob/master/img/IMG_3873.PNG)
+![The automation](https://github.com/stickystyle/aiexperiments/blob/main/img/IMG_3873.PNG)
