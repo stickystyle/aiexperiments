@@ -10,6 +10,7 @@ python-pirateweather = "*"
 requests = "*"
 flask = "*"
 flask-apscheduler = "*"
+icalevents = "*"
 
 [dev-packages]
 

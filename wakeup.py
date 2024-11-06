@@ -1,4 +1,5 @@
 import os
+import datetime
 
 import environs
 import flask
@@ -7,6 +8,7 @@ import requests
 from flask import Response
 from flask_apscheduler import APScheduler
 from openai import OpenAI
+from icalevents.icalevents import events
 
 env = environs.Env()
 environs.Env.read_env()
@@ -47,6 +49,19 @@ def get_ha_data():
     return main_floor, zone_home
 
 
+def fetch_calendar():
+    today = datetime.date.today()
+    es = events(
+        "webcal://p42-caldav.icloud.com/published/2/OTk1Mjc5MTc5OTUyNzkxN020HrKJqPbJgUFjID5nVcpDsIUo2WGhqwSveKbcQagu",
+        fix_apple=True,
+        start=today,
+        end=today,
+        sort=True
+    )
+    return [e.summary for e in es]
+
+
+
 def build_prompt(main_floor, zone_home):
     forecast = pirateweather.load_forecast(
         PIRATE_WEATHER_API_KEY,
@@ -71,7 +86,8 @@ def build_prompt(main_floor, zone_home):
                           Current Temp: {forcast_prompt['Current Temperature']}
                           Conditions for the day: {forcast_prompt['Conditions for Day']}
                           High:  {forcast_prompt['High Temperature']}
-                          Low: {forcast_prompt['Low Temperature']}"""
+                          Low: {forcast_prompt['Low Temperature']}
+               And the following items on her calendar: {','.join(fetch_calendar())}"""
 
 
 def wakeup():
@@ -100,17 +116,20 @@ def wakeup():
 @scheduler.task(
     "cron", id="write_message", week="*", day_of_week="*", hour="7", minute="30"
 )
+@app.route("/writemessage")
 def write_message():
     message = wakeup()
 
     with open(f"{dir_path}/message.txt", "w") as f:
         f.write(message)
 
+    return Response(message, mimetype="text/plain")
 
 @app.route("/")
 def get_message():
     with open(f"{dir_path}/message.txt", "r") as f:
         return Response(f.read(), mimetype="text/plain")
+
 
 
 if __name__ == "__main__":
