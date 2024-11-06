@@ -1,12 +1,11 @@
-from openai import OpenAI
-import pirateweather
 import environs
+import pirateweather
 import requests
-from flask import Flask
+from openai import OpenAI
 
 env = environs.Env()
 environs.Env.read_env()
-app = Flask(__name__)
+
 
 GITHUB_TOKEN = env("GITHUB_TOKEN")
 PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
@@ -24,7 +23,6 @@ client = OpenAI(
 
 ha_session = requests.Session()
 ha_session.headers.update({"Authorization": f"Bearer {HA_TOKEN}"})
-
 
 def get_ha_data():
     ha = ha_session.get(
@@ -66,7 +64,7 @@ def build_prompt(main_floor, zone_home):
                           Low: {forcast_prompt['Low Temperature']}"""
 
 
-@app.route("/")
+
 def wakeup():
     prompt = build_prompt(*get_ha_data())
 
@@ -88,3 +86,13 @@ def wakeup():
     )
 
     return response.choices[0].message.content
+
+
+def main():
+    message = wakeup()
+
+    with open("message.txt", "w") as f:
+        f.write(message)
+
+if __name__ == "__main__":
+    main()
