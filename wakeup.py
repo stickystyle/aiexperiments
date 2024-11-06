@@ -1,20 +1,29 @@
+import os
+
 import environs
+import flask
 import pirateweather
 import requests
+from flask import Response
+from flask_apscheduler import APScheduler
 from openai import OpenAI
 
 env = environs.Env()
 environs.Env.read_env()
 
 
+app = flask.Flask(__name__)
+
+# initialize scheduler
+scheduler = APScheduler()
+
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 GITHUB_TOKEN = env("GITHUB_TOKEN")
 PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
 HA_TOKEN = env("HA_TOKEN")
-
-personalities = {
-    "Barbie": "You are Barbie, from the 2023 Barbie movie. A temperature below 70°F is considered cold.",
-    "Clueless": "You are Cher from the movie Clueless. A temperature below 70°F is considered cold.",
-}
+PERSONALITY = env("PERSONALITY")
 
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
@@ -23,6 +32,7 @@ client = OpenAI(
 
 ha_session = requests.Session()
 ha_session.headers.update({"Authorization": f"Bearer {HA_TOKEN}"})
+
 
 def get_ha_data():
     ha = ha_session.get(
@@ -64,7 +74,6 @@ def build_prompt(main_floor, zone_home):
                           Low: {forcast_prompt['Low Temperature']}"""
 
 
-
 def wakeup():
     prompt = build_prompt(*get_ha_data())
 
@@ -72,7 +81,7 @@ def wakeup():
         messages=[
             {
                 "role": "system",
-                "content": personalities["Barbie"],
+                "content": PERSONALITY,
             },
             {
                 "role": "user",
@@ -88,11 +97,25 @@ def wakeup():
     return response.choices[0].message.content
 
 
-def main():
+@scheduler.task(
+    "cron", id="write_message", week="*", day_of_week="*", hour="7", minute="30"
+)
+def write_message():
     message = wakeup()
 
-    with open("message.txt", "w") as f:
+    with open(f"{dir_path}/message.txt", "w") as f:
         f.write(message)
 
+
+@app.route("/")
+def get_message():
+    with open(f"{dir_path}/message.txt", "r") as f:
+        return Response(f.read(), mimetype="text/plain")
+
+
 if __name__ == "__main__":
-    main()
+    scheduler.api_enabled = True
+    scheduler.init_app(app)
+    scheduler.start()
+
+    app.run(host="0.0.0.0", port=5054)

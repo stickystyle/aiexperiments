@@ -9,6 +9,7 @@ environs = "*"
 python-pirateweather = "*"
 requests = "*"
 flask = "*"
+flask-apscheduler = "*"
 
 [dev-packages]
 
