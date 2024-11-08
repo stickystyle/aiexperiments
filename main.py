@@ -8,20 +8,17 @@ import flask
 import pirateweather
 import requests
 from flask import Response
-from flask_apscheduler import APScheduler
 from icalevents.icalevents import events
 from openai import OpenAI
 
-logging.basicConfig(level=logging.DEBUG)  # Set the desired logging level
 
 env = environs.Env()
 environs.Env.read_env()
 
+logging.basicConfig(level=env("LOG_LEVEL", "DEBUG"))  # Set the desired logging level
+
 
 app = flask.Flask(__name__)
-
-# initialize scheduler
-scheduler = APScheduler()
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -31,8 +28,6 @@ PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
 HA_TOKEN = env("HA_TOKEN")
 PERSONALITY = env("PERSONALITY")
 ICAL_URL = env("ICAL_URL")
-HOUR = env("HOUR")
-MINUTE = env("MINUTE")
 
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
@@ -64,6 +59,17 @@ def fetch_calendar() -> List[str]:
     app.logger.info("cal_events: %s", cal_events)
     return cal_events
 
+def get_time_of_day() -> str:
+    now = datetime.datetime.now()
+    if now.hour < 12:
+        return "Morning"
+    elif now.hour < 16:
+        return "Afternoon"
+    elif now.hour < 19:
+        return "Evening"
+    else:
+        return "Night"
+
 
 def build_prompt(main_floor: dict, zone_home:dict):
     forecast = pirateweather.load_forecast(
@@ -83,7 +89,7 @@ def build_prompt(main_floor: dict, zone_home:dict):
         "Low Temperature": f"{round(today.d['apparentTemperatureLow'])}°F",
     }
     cal_events = fetch_calendar()
-    prompt = f"""Write me a good morning message without using emojis or signing the message, given the following weather conditions for today:
+    prompt = f"""Write me a good {get_time_of_day()} message without using emojis or signing the message, given the following weather conditions for today:
                           Temperature inside the house: {forcast_prompt['Inside Temperature']}
                           Current Conditions: {forcast_prompt['Current Conditions']}
                           Current Temp: {forcast_prompt['Current Temperature']}
@@ -127,38 +133,13 @@ def _write_message() -> str:
 
     return message
 
-
-@scheduler.task(
-    "cron", id="write_message", week="*", day_of_week="*", hour=HOUR, minute=MINUTE
-)
-def scheduled_message():
-    app.logger.info("Writing scheduled message")
-    _write_message()
-
-
-@app.route("/write_message")
-def write_message() -> Response:
-    message = _write_message()
-
-    return Response(message, mimetype="text/plain")
-
-
 @app.route("/")
 def get_message() -> Response:
-    try:
-        with open(f"{dir_path}/message.txt", "r") as f:
-            message = f.read()
-    except FileNotFoundError:
-        app.logger.warning("No message file found")
-        message = _write_message()
-
+    message = build_response()
 
     return Response(message, mimetype="text/plain")
 
 
 if __name__ == "__main__":
-    scheduler.api_enabled = True
-    scheduler.init_app(app)
-    scheduler.start()
 
     app.run(host="0.0.0.0", port=5054)
