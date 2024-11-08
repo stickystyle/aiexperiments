@@ -138,7 +138,7 @@ def _write_message() -> str:
 @app.route("/")
 def get_message() -> Response:
     message = build_response()
-
+    app.logger.info("message: %s", message)
     return Response(message, mimetype="text/plain")
 
 
