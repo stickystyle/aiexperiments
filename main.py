@@ -15,13 +15,11 @@ from openai import OpenAI
 env = environs.Env()
 environs.Env.read_env()
 
-logging.basicConfig(level=env("LOG_LEVEL", "DEBUG"))  # Set the desired logging level
+logging.basicConfig(level=env("LOG_LEVEL", "INFO"))  # Set the desired logging level
 
 
 app = flask.Flask(__name__)
 
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
 
 GITHUB_TOKEN = env("GITHUB_TOKEN")
 PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
@@ -43,11 +41,13 @@ def get_ha_data() -> Tuple[dict, dict]:
         "http://homeassistant.local:8123/api/states/climate.main_floor",
     )
     main_floor = ha.json()
+    app.logger.debug("main_floor: %s", main_floor)
 
     ha = ha_session.get(
         "http://homeassistant.local:8123/api/states/zone.home",
     )
     zone_home = ha.json()
+    app.logger.debug("zone_home: %s", zone_home)
     return main_floor, zone_home
 
 
@@ -58,6 +58,7 @@ def fetch_calendar() -> List[str]:
     cal_events = [e.summary for e in es if e.start.date() == today]
     app.logger.info("cal_events: %s", cal_events)
     return cal_events
+
 
 def get_time_of_day() -> str:
     now = datetime.datetime.now()
@@ -71,7 +72,7 @@ def get_time_of_day() -> str:
         return "Night"
 
 
-def build_prompt(main_floor: dict, zone_home:dict):
+def build_prompt(main_floor: dict, zone_home: dict):
     forecast = pirateweather.load_forecast(
         PIRATE_WEATHER_API_KEY,
         zone_home["attributes"]["latitude"],
@@ -127,11 +128,12 @@ def build_response() -> str:
 
 def _write_message() -> str:
     message = build_response()
-
+    dir_path = os.path.dirname(os.path.realpath(__file__))
     with open(f"{dir_path}/message.txt", "w") as f:
         f.write(message)
 
     return message
+
 
 @app.route("/")
 def get_message() -> Response:
