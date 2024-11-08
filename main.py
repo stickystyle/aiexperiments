@@ -145,8 +145,15 @@ def write_message() -> Response:
 
 @app.route("/")
 def get_message() -> Response:
-    with open(f"{dir_path}/message.txt", "r") as f:
-        return Response(f.read(), mimetype="text/plain")
+    try:
+        with open(f"{dir_path}/message.txt", "r") as f:
+            message = f.read()
+    except FileNotFoundError:
+        app.logger.warning("No message file found")
+        message = _write_message()
+
+
+    return Response(message, mimetype="text/plain")
 
 
 if __name__ == "__main__":
