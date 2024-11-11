@@ -58,7 +58,7 @@ def fetch_calendar() -> List[str]:
     es = events(ICAL_URL, fix_apple=True, sort=True)
     cal_events = [e.summary for e in es if e.start.date() == today]
     if today_holidays := us_holidays.get(today):
-        cal_events.extend(today_holidays)
+        cal_events.append(today_holidays)
     app.logger.info("cal_events: %s", cal_events)
     return cal_events
 
