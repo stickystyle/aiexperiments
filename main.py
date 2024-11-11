@@ -10,7 +10,7 @@ import requests
 from flask import Response
 from icalevents.icalevents import events
 from openai import OpenAI
-
+import holidays
 
 env = environs.Env()
 environs.Env.read_env()
@@ -53,9 +53,12 @@ def get_ha_data() -> Tuple[dict, dict]:
 
 def fetch_calendar() -> List[str]:
     today = datetime.date.today()
+    us_holidays = holidays.country_holidays('US')
     # The `start`, and `end` arguments of events() do not work as expected, so we filter the results manually
     es = events(ICAL_URL, fix_apple=True, sort=True)
     cal_events = [e.summary for e in es if e.start.date() == today]
+    if today_holidays := us_holidays.get(today):
+        cal_events.extend(today_holidays)
     app.logger.info("cal_events: %s", cal_events)
     return cal_events
 

@@ -11,6 +11,7 @@ requests = "*"
 flask = "*"
 flask-apscheduler = "*"
 icalevents = "*"
+holidays = "*"
 
 [dev-packages]
 
