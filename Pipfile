@@ -12,6 +12,8 @@ flask = "*"
 flask-apscheduler = "*"
 icalevents = "*"
 holidays = "*"
+feedparser = "*"
+homeassistant-api = "*"
 
 [dev-packages]
 
