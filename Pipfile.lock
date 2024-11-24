@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5e1130b84a4bd8afa86e02e1b6743d8a43cb60d9a775bdffc09377d3b83eb1d5"
+            "sha256": "00f69f16f6324e93c42410e5eb7e6feb9e1d3effe148a2f8443546ce368e7515"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -144,14 +144,6 @@
                 "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"
             ],
             "version": "==1.4.4"
-        },
-        "apscheduler": {
-            "hashes": [
-                "sha256:e6df071b27d9be898e486bc7940a7be50b4af2e9da7c08f0744a96d4bd4cef4a",
-                "sha256:fb91e8a768632a4756a585f79ec834e0e27aad5860bac7eaa523d9ccefd87661"
-            ],
-            "markers": "python_version >= '3.6'",
-            "version": "==3.10.4"
         },
         "attrs": {
             "hashes": [
@@ -338,14 +330,6 @@
             "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==3.1.0"
-        },
-        "flask-apscheduler": {
-            "hashes": [
-                "sha256:b929846f026fb339b76360b0e4fc75da78b75c6d08625715bd0d37949bd607da"
-            ],
-            "index": "pypi",
-            "markers": "python_version >= '3.8'",
-            "version": "==1.13.1"
         },
         "frozenlist": {
             "hashes": [
@@ -1221,14 +1205,6 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==4.12.2"
-        },
-        "tzlocal": {
-            "hashes": [
-                "sha256:49816ef2fe65ea8ac19d19aa7a1ae0551c834303d5014c6d5a62e4cbda8047b8",
-                "sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e"
-            ],
-            "markers": "python_version >= '3.8'",
-            "version": "==5.2"
         },
         "url-normalize": {
             "hashes": [
