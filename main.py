@@ -1,5 +1,6 @@
 import datetime
 import logging
+from random import randint
 from typing import List, Tuple
 
 import environs
@@ -21,25 +22,19 @@ logging.basicConfig(level=env("LOG_LEVEL", "INFO"))  # Set the desired logging l
 app = flask.Flask(__name__)
 
 
-GITHUB_TOKEN = env("GITHUB_TOKEN")
-PIRATE_WEATHER_API_KEY = env("PIRATE_WEATHER_API_KEY")
-PERSONALITY = env("PERSONALITY")
-ICAL_URL = env("ICAL_URL")
-
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
-    api_key=GITHUB_TOKEN,
+    api_key=env("GITHUB_TOKEN"),
 )
 
-
-ha_client = Client("http://homeassistant.local:8123/api", env("HA_TOKEN"))
+ha_client = Client(env("HA_URL"), env("HA_TOKEN"))
 
 
 def _get_pirate_weather(latitude, longitude) -> str:
     import pirateweather
 
     forecast = pirateweather.load_forecast(
-        key=PIRATE_WEATHER_API_KEY,
+        key=env("PIRATE_WEATHER_API_KEY"),
         lat=latitude,
         lng=longitude,
     )
@@ -82,14 +77,12 @@ def get_weather() -> str:
 
 
 def get_indoor_temperature() -> int:
-    with ha_client:
-        main_floor = ha_client.get_state(entity_id="climate.main_floor")
+    main_floor = ha_client.get_state(entity_id="climate.main_floor")
     return main_floor.attributes["current_temperature"]
 
 
 def get_location_from_ha() -> Tuple[float, float]:
-    with ha_client:
-        zone_home = ha_client.get_state(entity_id="zone.home")
+    zone_home = ha_client.get_state(entity_id="zone.home")
     app.logger.debug("zone_home: %s", zone_home)
     return zone_home.attributes["latitude"], zone_home.attributes["longitude"]
 
@@ -98,7 +91,7 @@ def fetch_calendar() -> str:
     today = datetime.date.today()
     us_holidays = holidays.country_holidays("US")
     # The `start`, and `end` arguments of events() do not work as expected, so we filter the results manually
-    es = events(ICAL_URL, fix_apple=True, sort=True)
+    es = events(env("ICAL_URL"), fix_apple=True, sort=True)
     cal_events = [e.summary for e in es if e.start.date() == today]
     if today_holidays := us_holidays.get(today):
         cal_events.append(today_holidays)
@@ -120,7 +113,18 @@ def get_time_of_day() -> str:
 
 def fetch_good_news():
     feed = feedparser.parse("https://www.goodnewsnetwork.org/feed/")
-    return feed.entries[1].link
+    stories = []
+    # Ignore stories with these tags, horoscopes are not good news, and ChatGPT get confused with 'This Day In History'
+    ignore_tags = ["Horoscopes", "This Day In History", "On this day"]
+    for story in feed.entries:
+        tags = [x["term"] for x in story.tags]
+        if any(x in tags for x in ignore_tags):
+            app.logger.info("skipping story: %s with tags: %s", story.link, tags)
+            continue
+        stories.append(story)
+
+    app.logger.info("good news: %s", stories[0].link)
+    return stories[0].link
 
 
 def build_prompt():
@@ -173,7 +177,7 @@ def build_response() -> str:
         messages=[
             {
                 "role": "system",
-                "content": PERSONALITY,
+                "content": env("PERSONALITY"),
             },
             {
                 "role": "user",
