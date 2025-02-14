@@ -195,6 +195,9 @@ def build_response() -> str:
 
 @app.route("/")
 def get_message() -> Response:
+    # Reload the env so we can change it while running
+    environs.Env.read_env()
+
     message = build_response()
     app.logger.info("message: %s", message)
     return Response(message, mimetype="text/plain")
